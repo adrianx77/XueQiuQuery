@@ -33,3 +33,4 @@ gw_auth_helper.erl
 *.log.?
 *.log.??
 IntelliJIDEALicenseServer_darwin_amd64
+Index_*.txt
