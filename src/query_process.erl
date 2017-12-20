@@ -113,6 +113,7 @@ handle_cast(_Request, State) ->
 	{noreply, NewState :: #state{}, timeout() | hibernate} |
 	{stop, Reason :: term(), NewState :: #state{}}).
 handle_info({http,{_RequestId, Result}},#state{write = OutFile}=State)->
+	{OName,OCode,OArea} = get('curRequest'),
 	case Result of
 		{_, _Headers, Body}->
 			JsObj = jsx:decode(Body,[return_maps]),
@@ -120,14 +121,17 @@ handle_info({http,{_RequestId, Result}},#state{write = OutFile}=State)->
 				[Key]->
 					#{Key:=Content} = JsObj,
 					#{<<"name">>:=Name ,<<"code">> := Code, <<"eps">>:=EPS , <<"close">>:= Close ,<<"open">> :=Open} = Content,
-					io:format("process:~s~n",[Code]),
+					io:format("successed:~s~n",[Code]),
 					case EPS of
 						<<>>-> io:fwrite(OutFile,"~s (~s) EPS:0 safe_price:0 close:~s open:~s~n",[Name,Code,Close,Open]);
 						_->io:fwrite(OutFile,"~s (~s) EPS:~s safe_price:~p close:~s open:~s~n",[Name,Code,EPS,binary_to_float(EPS)*11.49425287,Close,Open])
 					end;
 				_->
+					io:format("Error get ~s ~s ~s~n",[OName,OCode,OArea]),
 					ignore_error
-			end
+			end;
+		_->
+			io:format("Error get ~s ~s ~s~n",[OName,OCode,OArea])
 	end,
 	timer:send_after(50,'START_PULL'),
 	{noreply, State};
@@ -174,9 +178,9 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-query_info(_Name,Code,Area)->
+query_info(Name,Code,Area)->
 	Url = "http://xueqiu.com/v4/stock/quote.json?code=" ++Area++Code,
-	Cookie = "xq_a_token=95b69ccb71a54ebf3d7060a84a72b45015fead7f; xq_a_token.sig=r7RhUAkpd9FiBmPDlOV3F-V8LFo; xq_r_token=6589f21e3e52d21c4d3de00d3135b3920fa8a52f; xq_r_token.sig=Ho5fiQYDNIITpBXlltLZVADXRSI; u=361513655554186; device_id=a2301f8fcd30fcd861d2dbcd24a41137; __utma=1.1081078213.1513655561.1513655561.1513655561.1; __utmc=1; __utmz=1.1513655561.1.1.utmcsr=(direct)|utmccn=(direct)|utmcmd=(none); s=ev18hnoncv; Hm_lvt_1db88642e346389874251b5a1eded6e3=1513655555,1513655728,1513655780,1513655924; Hm_lpvt_1db88642e346389874251b5a1eded6e3=1513656082",
+	Cookie = "xq_a_token=95b69ccb71a54ebf3d7060a84a72b45015fead7f; xq_a_token.sig=r7RhUAkpd9FiBmPDlOV3F-V8LFo; xq_r_token=6589f21e3e52d21c4d3de00d3135b3920fa8a52f; xq_r_token.sig=Ho5fiQYDNIITpBXlltLZVADXRSI; u=831513731324295; device_id=0547c0f6b8a976d1a9d750c9746c515a; s=fd1bqf2682; __utmc=1; __utmt=1; Hm_lvt_1db88642e346389874251b5a1eded6e3=1513731327,1513731386; Hm_lpvt_1db88642e346389874251b5a1eded6e3=1513731386; __utma=1.1932201061.1513731344.1513731344.1513731386.2; __utmz=1.1513731386.2.2.utmcsr=baidu|utmccn=(organic)|utmcmd=organic; __utmb=1.1.10.1513731386",
 	Headers = [
 		{"User-Agent","Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.84 Safari/537.36"},
 		{"Cookie",Cookie}, %%Cookie需要你自己去你的浏览器查看开发者工具，看Request的Header，复制出来就可以了
@@ -184,4 +188,5 @@ query_info(_Name,Code,Area)->
 		{"Accept","text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8"},
 		{"Accept-Language","zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7"}
 	],
+	put('curRequest',{Name,Code,Area}),
 	httpc:request(get, {Url,Headers}, [], [{full_result, true},{sync, false}]).
