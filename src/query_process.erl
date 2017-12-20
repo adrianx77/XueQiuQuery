@@ -121,17 +121,17 @@ handle_info({http,{_RequestId, Result}},#state{write = OutFile}=State)->
 				[Key]->
 					#{Key:=Content} = JsObj,
 					#{<<"name">>:=Name ,<<"code">> := Code, <<"eps">>:=EPS , <<"close">>:= Close ,<<"open">> :=Open} = Content,
-					io:format("successed:~s~n",[Code]),
+					io:format("successed:~ts~s~n",[Name,Code]),
 					case EPS of
-						<<>>-> io:fwrite(OutFile,"~s (~s) EPS:0 safe_price:0 close:~s open:~s~n",[Name,Code,Close,Open]);
+						<<>>-> io:fwrite(OutFile,"~ts (~s) EPS:0 safe_price:0 close:~s open:~s~n",[Name,Code,Close,Open]);
 						_->io:fwrite(OutFile,"~s (~s) EPS:~s safe_price:~p close:~s open:~s~n",[Name,Code,EPS,binary_to_float(EPS)*11.49425287,Close,Open])
 					end;
 				_->
-					io:format("Error get ~s ~s ~s~n",[OName,OCode,OArea]),
+					io:format("Error get ~ts ~s ~s~n",[unicode:characters_to_list(list_to_binary(OName)),OCode,OArea]),
 					ignore_error
 			end;
 		_->
-			io:format("Error get ~s ~s ~s~n",[OName,OCode,OArea])
+			io:format("1 Error get ~ts ~s ~s~n",[unicode:characters_to_list(list_to_binary(OName)),OCode,OArea])
 	end,
 	timer:send_after(50,'START_PULL'),
 	{noreply, State};
